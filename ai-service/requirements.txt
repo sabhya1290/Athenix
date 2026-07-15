@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+langchain
+langchain-google-genai
+google-generativeai
+sentence-transformers
+faiss-cpu
+pypdf
+pymupdf
+python-multipart
+pillow
+pandas
+numpy
+scikit-learn
+python-dotenv
+tiktoken
