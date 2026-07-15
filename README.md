@@ -28,29 +28,6 @@
 Unlike traditional learning platforms that treat every learner the same, **Athenix continuously adapts to each student's learning style, strengths, weaknesses, and progress**, creating a truly personalized educational experience.
 
 ---
-
-# 🌟 Why the Name "Athenix"?
-
-The name **Athenix** is inspired by **Athena**, the Greek goddess of:
-
-- 🧠 Wisdom
-- 📚 Knowledge
-- 🎓 Learning
-- ♟️ Strategic Thinking
-
-The modern **"-ix"** suffix represents:
-
-- 🤖 Artificial Intelligence
-- 💡 Innovation
-- 🚀 Technology
-- 🌍 The Future
-
-Together,
-
-> **Athenix = Athena + Innovation**
-
-It symbolizes the fusion of timeless wisdom with modern Artificial Intelligence.
-
 Rather than simply answering questions, Athenix acts as an intelligent mentor that understands how each student learns and provides personalized guidance every step of the way.
 
 ---
@@ -327,19 +304,6 @@ Future AI Agents include:
 
 Together, these agents will collaborate to deliver a truly personalized educational experience.
 
----
-
-# 💙 Brand Story
-
-The name **Athenix** represents more than technology.
-
-It embodies the belief that learning should combine the timeless wisdom of **Athena** with the limitless possibilities of Artificial Intelligence.
-
-Athenix isn't just another AI chatbot.
-
-It's an intelligent mentor designed to understand every learner, guide their journey, and empower them to reach their full potential.
-
----
 
 <div align="center">
 
@@ -348,7 +312,5 @@ It's an intelligent mentor designed to understand every learner, guide their jou
 ### **Learn Smarter • Think Bigger • Grow Faster**
 
 Made with ❤️ by Team **Athenix**
-
-⭐ If you like this project, don't forget to star the repository!
 
 </div>
