@@ -23,3 +23,41 @@ You must return the response in valid JSON matching this schema:
 }}
 
 Do not wrap the output in markdown code blocks like ```json ... ```. Return raw JSON only."""
+
+def get_recommendation_prompt(scores: dict) -> str:
+    formatted_scores = "\n".join([f"- {subject}: {score}%" for subject, score in scores.items()])
+    return f"""A student has the following exam scores:
+{formatted_scores}
+
+Suggest:
+1. Today's study plan
+2. Weak topics to focus on
+3. Time allocation per subject
+4. A motivational boost
+
+Return the response in valid JSON format matching this schema:
+{{
+  "recommendation": "your recommendation and study plan text here"
+}}
+
+Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
+
+def get_roadmap_prompt(exam: str, days_left: int, subjects: list, daily_hours: int) -> str:
+    formatted_subjects = ", ".join(subjects)
+    return f"""Create a detailed {days_left}-day study plan for the {exam} exam.
+Subjects: {formatted_subjects}
+Daily study allocation: {daily_hours} hours.
+
+Ensure the plan includes:
+- Balanced revision of subjects
+- Weekly tests/assessments
+
+Return the response in valid JSON format matching this schema:
+{{
+  "plan": {{
+    "Day 1": ["subject 1: study topic X", "subject 2: solve problems on Y", "revision/tests"],
+    "Day 2": ["subject 1: study topic Z", "subject 2: solve problems on W"]
+  }}
+}}
+
+Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""

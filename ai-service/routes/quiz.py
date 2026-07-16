@@ -26,7 +26,7 @@ def generate_quiz(request: QuizRequest):
     try:
         prompt = get_quiz_prompt(request.topic, request.difficulty, request.questions)
         # Request JSON mode from Gemini helper
-        raw_response = generate_text(prompt, json_mode=True)
+        raw_response = generate_text(prompt, json_mode=True, response_schema=QuizResponse)
         
         # Clean response string in case Gemini still added markdown wrappers
         clean_response = raw_response.strip()

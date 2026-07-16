@@ -6,11 +6,15 @@ load_dotenv()
 
 from routes.explain import router as explain_router
 from routes.quiz import router as quiz_router
+from routes.recommendation import router as recommendation_router
+from routes.planner import router as planner_router
 
 app = FastAPI(title="Athenix AI Service")
 
 app.include_router(explain_router)
 app.include_router(quiz_router)
+app.include_router(recommendation_router)
+app.include_router(planner_router)
 
 @app.get("/")
 def read_root():
