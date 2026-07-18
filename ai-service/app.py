@@ -11,7 +11,18 @@ from routes.planner import router as planner_router
 from routes.evaluation import router as evaluation_router
 from routes.analytics import router as analytics_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="Athenix AI Service")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this in production to match your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(explain_router)
 app.include_router(quiz_router)
