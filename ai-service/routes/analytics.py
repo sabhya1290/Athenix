@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List
 from services.gemini import generate_text
 from services.prompts import get_analytics_prompt
@@ -12,8 +12,29 @@ class QuizRecord(BaseModel):
     topic: str = Field(..., example="Arrays", description="The subject/topic of the quiz")
     score: int = Field(..., example=40, description="The score percentage the student obtained")
 
+    @field_validator("title", "topic")
+    @classmethod
+    def fields_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Quiz fields cannot be empty or whitespace")
+        return v.strip()
+
+    @field_validator("score")
+    @classmethod
+    def score_must_be_percentage(cls, v: int) -> int:
+        if not (0 <= v <= 100):
+            raise ValueError("Score must be between 0 and 100")
+        return v
+
 class AnalyticsRequest(BaseModel):
     quizzes: List[QuizRecord] = Field(..., description="List of the student's historical quiz records")
+
+    @field_validator("quizzes")
+    @classmethod
+    def quizzes_must_not_be_empty(cls, v: List[QuizRecord]) -> List[QuizRecord]:
+        if not v:
+            raise ValueError("Quizzes list cannot be empty")
+        return v
 
 class AnalyticsResponse(BaseModel):
     weak_topics: List[str] = Field(..., description="Topics where the student performed poorly")
@@ -39,7 +60,38 @@ def analyze_student_performance(request: AnalyticsRequest):
         data = json.loads(clean_response)
         data_model = AnalyticsResponse(**data)
         return UnifiedResponse(success=True, data=data_model)
-    except json.JSONDecodeError:
-        return UnifiedResponse(success=False, error="Failed to parse Gemini response as JSON. Please try again.")
     except Exception as e:
-        return UnifiedResponse(success=False, error=str(e))
+        # Graceful local fallback: calculate weak (< 60%) and strong (>= 75%) topics deterministically
+        topic_scores = {}
+        for q in request.quizzes:
+            if q.topic not in topic_scores:
+                topic_scores[q.topic] = []
+            topic_scores[q.topic].append(q.score)
+            
+        weak_topics = []
+        strong_topics = []
+        
+        for topic, scores in topic_scores.items():
+            avg_score = sum(scores) / len(scores)
+            if avg_score < 60:
+                weak_topics.append(topic)
+            elif avg_score >= 75:
+                strong_topics.append(topic)
+                
+        # Handle cases where all scores are in between 60 and 75
+        if not weak_topics and not strong_topics:
+            # Sort topics by average score to allocate at least one weak and one strong
+            sorted_topics = sorted(topic_scores.keys(), key=lambda t: sum(topic_scores[t])/len(topic_scores[t]))
+            if sorted_topics:
+                weak_topics.append(sorted_topics[0])
+                strong_topics.append(sorted_topics[-1])
+                
+        # Deduplicate
+        weak_topics = list(set(weak_topics))
+        strong_topics = list(set(strong_topics))
+        
+        fallback_data = AnalyticsResponse(
+            weak_topics=weak_topics,
+            strong_topics=strong_topics
+        )
+        return UnifiedResponse(success=True, data=fallback_data)

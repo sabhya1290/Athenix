@@ -11,12 +11,28 @@ api_key = os.getenv("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
 
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    reraise=True
+)
+def generate_text_call(model: genai.GenerativeModel, prompt: str, generation_config: dict) -> str:
+    response = model.generate_content(
+        prompt,
+        generation_config=generation_config,
+        request_options={"timeout": 15.0}  # 15 seconds timeout
+    )
+    return response.text
+
 def generate_text(prompt: str, json_mode: bool = False, response_schema=None) -> str:
     """
     Sends a prompt to the Gemini model and returns the text response.
     
     If json_mode is True, forces Gemini to respond with valid JSON.
     If response_schema is provided, forces Gemini to output matching the Pydantic schema.
+    Uses retry logic and a 15-second timeout for stability.
     """
     current_key = api_key or os.getenv("GEMINI_API_KEY")
     if not current_key:
@@ -33,5 +49,4 @@ def generate_text(prompt: str, json_mode: bool = False, response_schema=None) ->
     if response_schema:
         generation_config["response_schema"] = response_schema
         
-    response = model.generate_content(prompt, generation_config=generation_config)
-    return response.text
+    return generate_text_call(model, prompt, generation_config)
