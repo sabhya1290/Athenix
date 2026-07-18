@@ -19,7 +19,9 @@ class AnalyticsResponse(BaseModel):
     weak_topics: List[str] = Field(..., description="Topics where the student performed poorly")
     strong_topics: List[str] = Field(..., description="Topics where the student performed well")
 
-@router.post("/analyze", response_model=AnalyticsResponse)
+from utils.response import UnifiedResponse
+
+@router.post("/analyze", response_model=UnifiedResponse[AnalyticsResponse])
 def analyze_student_performance(request: AnalyticsRequest):
     try:
         # Convert Pydantic models to dict list for prompt generation
@@ -35,8 +37,9 @@ def analyze_student_performance(request: AnalyticsRequest):
         clean_response = clean_response.strip()
         
         data = json.loads(clean_response)
-        return AnalyticsResponse(**data)
+        data_model = AnalyticsResponse(**data)
+        return UnifiedResponse(success=True, data=data_model)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse Gemini response as JSON. Please try again.")
+        return UnifiedResponse(success=False, error="Failed to parse Gemini response as JSON. Please try again.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return UnifiedResponse(success=False, error=str(e))

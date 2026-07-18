@@ -15,7 +15,9 @@ class EvaluationResponse(BaseModel):
     feedback: str = Field(..., description="Detailed feedback on the answer")
     improvement: str = Field(..., description="Areas/ways the student can improve their score")
 
-@router.post("/evaluate", response_model=EvaluationResponse)
+from utils.response import UnifiedResponse
+
+@router.post("/evaluate", response_model=UnifiedResponse[EvaluationResponse])
 def evaluate_student_answer(request: EvaluationRequest):
     try:
         prompt = get_evaluation_prompt(request.question, request.student_answer)
@@ -29,8 +31,9 @@ def evaluate_student_answer(request: EvaluationRequest):
         clean_response = clean_response.strip()
         
         data = json.loads(clean_response)
-        return EvaluationResponse(**data)
+        data_model = EvaluationResponse(**data)
+        return UnifiedResponse(success=True, data=data_model)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse Gemini response as JSON. Please try again.")
+        return UnifiedResponse(success=False, error="Failed to parse Gemini response as JSON. Please try again.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return UnifiedResponse(success=False, error=str(e))

@@ -31,6 +31,20 @@ app.include_router(planner_router)
 app.include_router(evaluation_router)
 app.include_router(analytics_router)
 
+from pydantic import BaseModel
+from utils.response import UnifiedResponse
+
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+
+@app.get("/health", response_model=UnifiedResponse[HealthResponse])
+def health_check():
+    return UnifiedResponse(
+        success=True,
+        data=HealthResponse(status="healthy", service="Athenix AI Service")
+    )
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Athenix AI Service"}

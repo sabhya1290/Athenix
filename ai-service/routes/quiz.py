@@ -21,7 +21,9 @@ class QuizRequest(BaseModel):
     difficulty: str = Field("Easy", example="Easy", description="Difficulty level (Easy, Medium, Hard)")
     questions: int = Field(5, example=5, description="Number of questions to generate")
 
-@router.post("/generate-quiz", response_model=QuizResponse)
+from utils.response import UnifiedResponse
+
+@router.post("/generate-quiz", response_model=UnifiedResponse[QuizResponse])
 def generate_quiz(request: QuizRequest):
     try:
         prompt = get_quiz_prompt(request.topic, request.difficulty, request.questions)
@@ -37,8 +39,9 @@ def generate_quiz(request: QuizRequest):
         clean_response = clean_response.strip()
         
         quiz_data = json.loads(clean_response)
-        return QuizResponse(**quiz_data)
+        data = QuizResponse(**quiz_data)
+        return UnifiedResponse(success=True, data=data)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse Gemini response as JSON. Please try again.")
+        return UnifiedResponse(success=False, error="Failed to parse Gemini response as JSON. Please try again.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return UnifiedResponse(success=False, error=str(e))

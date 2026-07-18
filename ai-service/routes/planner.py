@@ -16,7 +16,9 @@ class PlannerRequest(BaseModel):
 class PlannerResponse(BaseModel):
     plan: Dict[str, List[str]] = Field(..., description="Day-by-day study roadmap")
 
-@router.post("/roadmap", response_model=PlannerResponse)
+from utils.response import UnifiedResponse
+
+@router.post("/roadmap", response_model=UnifiedResponse[PlannerResponse])
 def get_roadmap(request: PlannerRequest):
     try:
         prompt = get_roadmap_prompt(request.exam, request.days_left, request.subjects, request.daily_hours)
@@ -31,8 +33,9 @@ def get_roadmap(request: PlannerRequest):
         clean_response = clean_response.strip()
         
         data = json.loads(clean_response)
-        return PlannerResponse(**data)
+        data_model = PlannerResponse(**data)
+        return UnifiedResponse(success=True, data=data_model)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse Gemini response as JSON. Please try again.")
+        return UnifiedResponse(success=False, error="Failed to parse Gemini response as JSON. Please try again.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return UnifiedResponse(success=False, error=str(e))

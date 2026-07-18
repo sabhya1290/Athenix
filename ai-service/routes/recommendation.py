@@ -19,7 +19,9 @@ class RecommendationRequest(BaseModel):
 class RecommendationResponse(BaseModel):
     recommendation: str = Field(..., description="Personalized recommendation and study plan text")
 
-@router.post("/recommend", response_model=RecommendationResponse)
+from utils.response import UnifiedResponse
+
+@router.post("/recommend", response_model=UnifiedResponse[RecommendationResponse])
 def get_recommendation(request: RecommendationRequest):
     try:
         prompt = get_recommendation_prompt(request.scores)
@@ -34,8 +36,9 @@ def get_recommendation(request: RecommendationRequest):
         clean_response = clean_response.strip()
         
         data = json.loads(clean_response)
-        return RecommendationResponse(**data)
+        data_model = RecommendationResponse(**data)
+        return UnifiedResponse(success=True, data=data_model)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse Gemini response as JSON. Please try again.")
+        return UnifiedResponse(success=False, error="Failed to parse Gemini response as JSON. Please try again.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return UnifiedResponse(success=False, error=str(e))
