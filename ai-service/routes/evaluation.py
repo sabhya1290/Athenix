@@ -24,8 +24,13 @@ class EvaluationResponse(BaseModel):
 
 from utils.response import UnifiedResponse
 
+from utils.logger import get_logger
+
+logger = get_logger("EvaluationRoute")
+
 @router.post("/evaluate", response_model=UnifiedResponse[EvaluationResponse])
 def evaluate_student_answer(request: EvaluationRequest):
+    logger.info(f"Incoming POST /evaluate request for question: '{request.question[:50]}...'")
     try:
         prompt = get_evaluation_prompt(request.question, request.student_answer)
         raw_response = generate_text(prompt, json_mode=True, response_schema=EvaluationResponse)
@@ -37,10 +42,17 @@ def evaluate_student_answer(request: EvaluationRequest):
             clean_response = clean_response.rsplit("```", 1)[0]
         clean_response = clean_response.strip()
         
-        data = json.loads(clean_response)
+        try:
+            data = json.loads(clean_response)
+        except json.JSONDecodeError as jde:
+            logger.error(f"JSON parsing failure in evaluate_student_answer. Raw output: '{clean_response}'. Error: {str(jde)}")
+            raise jde
+            
         data_model = EvaluationResponse(**data)
+        logger.info("Successfully evaluated student answer.")
         return UnifiedResponse(success=True, data=data_model)
     except Exception as e:
+        logger.warning(f"Error in evaluate_student_answer, falling back. Error: {str(e)}")
         fallback_data = EvaluationResponse(
             score=5,
             feedback=f"We were temporarily unable to reach the AI evaluator. Your answer has been saved. Please try again later. (Error: {str(e)[:50]}...)",

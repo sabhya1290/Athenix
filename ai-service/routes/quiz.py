@@ -29,14 +29,17 @@ class QuizRequest(BaseModel):
             raise ValueError("Topic cannot be empty or whitespace")
         return v.strip()
 
+from utils.logger import get_logger
+
+logger = get_logger("QuizRoute")
+
 @router.post("/generate-quiz", response_model=UnifiedResponse[QuizResponse])
 def generate_quiz(request: QuizRequest):
+    logger.info(f"Incoming POST /generate-quiz request for topic: '{request.topic}', difficulty: '{request.difficulty}', questions: {request.questions}")
     try:
         prompt = get_quiz_prompt(request.topic, request.difficulty, request.questions)
-        # Request JSON mode from Gemini helper
         raw_response = generate_text(prompt, json_mode=True, response_schema=QuizResponse)
         
-        # Clean response string in case Gemini still added markdown wrappers
         clean_response = raw_response.strip()
         if clean_response.startswith("```json"):
             clean_response = clean_response.split("```json", 1)[1]
@@ -44,10 +47,17 @@ def generate_quiz(request: QuizRequest):
             clean_response = clean_response.rsplit("```", 1)[0]
         clean_response = clean_response.strip()
         
-        quiz_data = json.loads(clean_response)
+        try:
+            quiz_data = json.loads(clean_response)
+        except json.JSONDecodeError as jde:
+            logger.error(f"JSON parsing failure in generate_quiz. Raw output: '{clean_response}'. Error: {str(jde)}")
+            raise jde
+            
         data = QuizResponse(**quiz_data)
+        logger.info("Successfully generated quiz.")
         return UnifiedResponse(success=True, data=data)
     except Exception as e:
+        logger.warning(f"Error in generate_quiz, falling back. Error: {str(e)}")
         # Graceful fallback: return a default quiz item
         fallback_item = QuizItem(
             question=f"Which of the following is a primary characteristic of '{request.topic}'?",

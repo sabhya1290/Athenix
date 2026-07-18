@@ -11,20 +11,31 @@ api_key = os.getenv("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
 
-from tenacity import retry, stop_after_attempt, wait_exponential
+from utils.logger import get_logger
+from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
+import logging
+
+logger = get_logger("GeminiService")
 
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True
 )
 def generate_text_call(model: genai.GenerativeModel, prompt: str, generation_config: dict) -> str:
-    response = model.generate_content(
-        prompt,
-        generation_config=generation_config,
-        request_options={"timeout": 15.0}  # 15 seconds timeout
-    )
-    return response.text
+    try:
+        logger.info("Initiating Gemini API content generation call...")
+        response = model.generate_content(
+            prompt,
+            generation_config=generation_config,
+            request_options={"timeout": 15.0}  # 15 seconds timeout
+        )
+        logger.info("Gemini API call succeeded.")
+        return response.text
+    except Exception as e:
+        logger.error(f"Gemini API call failed: {str(e)}")
+        raise e
 
 def generate_text(prompt: str, json_mode: bool = False, response_schema=None) -> str:
     """

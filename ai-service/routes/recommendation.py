@@ -32,8 +32,13 @@ class RecommendationRequest(BaseModel):
 class RecommendationResponse(BaseModel):
     recommendation: str = Field(..., description="Personalized recommendation and study plan text")
 
+from utils.logger import get_logger
+
+logger = get_logger("RecommendationRoute")
+
 @router.post("/recommend", response_model=UnifiedResponse[RecommendationResponse])
 def get_recommendation(request: RecommendationRequest):
+    logger.info(f"Incoming POST /recommend request with scores: {request.scores}")
     try:
         prompt = get_recommendation_prompt(request.scores)
         raw_response = generate_text(prompt, json_mode=True, response_schema=RecommendationResponse)
@@ -46,10 +51,17 @@ def get_recommendation(request: RecommendationRequest):
             clean_response = clean_response.rsplit("```", 1)[0]
         clean_response = clean_response.strip()
         
-        data = json.loads(clean_response)
+        try:
+            data = json.loads(clean_response)
+        except json.JSONDecodeError as jde:
+            logger.error(f"JSON parsing failure in get_recommendation. Raw output: '{clean_response}'. Error: {str(jde)}")
+            raise jde
+            
         data_model = RecommendationResponse(**data)
+        logger.info("Successfully generated study recommendations.")
         return UnifiedResponse(success=True, data=data_model)
     except Exception as e:
+        logger.warning(f"Error in get_recommendation, falling back. Error: {str(e)}")
         # Determine the weakest subject based on scores
         weakest_subject = min(request.scores, key=request.scores.get)
         weakest_score = request.scores[weakest_subject]

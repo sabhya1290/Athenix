@@ -42,8 +42,13 @@ class AnalyticsResponse(BaseModel):
 
 from utils.response import UnifiedResponse
 
+from utils.logger import get_logger
+
+logger = get_logger("AnalyticsRoute")
+
 @router.post("/analyze", response_model=UnifiedResponse[AnalyticsResponse])
 def analyze_student_performance(request: AnalyticsRequest):
+    logger.info(f"Incoming POST /analyze request with {len(request.quizzes)} quiz records")
     try:
         # Convert Pydantic models to dict list for prompt generation
         quiz_list = [q.model_dump() for q in request.quizzes]
@@ -57,10 +62,17 @@ def analyze_student_performance(request: AnalyticsRequest):
             clean_response = clean_response.rsplit("```", 1)[0]
         clean_response = clean_response.strip()
         
-        data = json.loads(clean_response)
+        try:
+            data = json.loads(clean_response)
+        except json.JSONDecodeError as jde:
+            logger.error(f"JSON parsing failure in analyze_student_performance. Raw output: '{clean_response}'. Error: {str(jde)}")
+            raise jde
+            
         data_model = AnalyticsResponse(**data)
+        logger.info("Successfully analyzed performance.")
         return UnifiedResponse(success=True, data=data_model)
     except Exception as e:
+        logger.warning(f"Error in analyze_student_performance, falling back. Error: {str(e)}")
         # Graceful local fallback: calculate weak (< 60%) and strong (>= 75%) topics deterministically
         topic_scores = {}
         for q in request.quizzes:

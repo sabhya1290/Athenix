@@ -34,8 +34,13 @@ class PlannerRequest(BaseModel):
 class PlannerResponse(BaseModel):
     plan: Dict[str, List[str]] = Field(..., description="Day-by-day study roadmap")
 
+from utils.logger import get_logger
+
+logger = get_logger("PlannerRoute")
+
 @router.post("/roadmap", response_model=UnifiedResponse[PlannerResponse])
 def get_roadmap(request: PlannerRequest):
+    logger.info(f"Incoming POST /roadmap request for exam: '{request.exam}', days: {request.days_left}, subjects: {request.subjects}")
     try:
         prompt = get_roadmap_prompt(request.exam, request.days_left, request.subjects, request.daily_hours)
         raw_response = generate_text(prompt, json_mode=True, response_schema=PlannerResponse)
@@ -48,10 +53,17 @@ def get_roadmap(request: PlannerRequest):
             clean_response = clean_response.rsplit("```", 1)[0]
         clean_response = clean_response.strip()
         
-        data = json.loads(clean_response)
+        try:
+            data = json.loads(clean_response)
+        except json.JSONDecodeError as jde:
+            logger.error(f"JSON parsing failure in get_roadmap. Raw output: '{clean_response}'. Error: {str(jde)}")
+            raise jde
+            
         data_model = PlannerResponse(**data)
+        logger.info("Successfully generated study planner roadmap.")
         return UnifiedResponse(success=True, data=data_model)
     except Exception as e:
+        logger.warning(f"Error in get_roadmap, falling back. Error: {str(e)}")
         # Graceful fallback: generate a simple round-robin plan for the days
         fallback_plan = {}
         subjects_count = len(request.subjects)
