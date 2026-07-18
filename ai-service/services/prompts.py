@@ -61,3 +61,39 @@ Return the response in valid JSON format matching this schema:
 }}
 
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
+
+def get_evaluation_prompt(question: str, student_answer: str) -> str:
+    return f"""You are an expert evaluator. Evaluate the student's answer for the given question.
+Question: "{question}"
+Student's Answer: "{student_answer}"
+
+Provide:
+- A score out of 10
+- Feedback pointing out mistakes, positive aspects of the answer, and what constitutes the correct/complete answer
+- Specific improvements needed (e.g., "Mention sorted array.")
+
+Return the response in valid JSON format matching this schema:
+{{
+  "score": 8,
+  "feedback": "your feedback text here",
+  "improvement": "your improvement suggestions here"
+}}
+
+Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
+
+def get_analytics_prompt(quizzes: list) -> str:
+    formatted_quizzes = "\n".join([f"- {q.get('title', 'Quiz')}: {q.get('topic')} - {q.get('score')}%" for q in quizzes])
+    return f"""Analyze the student's quiz history and performance:
+{formatted_quizzes}
+
+Find and output:
+- Weak topics (where the student scored low or struggled)
+- Strong topics (where the student scored high or did well)
+
+Return the response in valid JSON format matching this schema:
+{{
+  "weak_topics": ["List of weak topics"],
+  "strong_topics": ["List of strong topics"]
+}}
+
+Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""

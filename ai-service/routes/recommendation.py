@@ -23,7 +23,7 @@ class RecommendationResponse(BaseModel):
 def get_recommendation(request: RecommendationRequest):
     try:
         prompt = get_recommendation_prompt(request.scores)
-        raw_response = generate_text(prompt, json_mode=True)
+        raw_response = generate_text(prompt, json_mode=True, response_schema=RecommendationResponse)
         
         # Clean response string in case Gemini still added markdown wrappers
         clean_response = raw_response.strip()
