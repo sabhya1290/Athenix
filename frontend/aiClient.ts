@@ -137,7 +137,17 @@ export interface StudentProfileRequest {
   days_left: number;
 }
 
+export interface WeaknessPriorityItem {
+  topic: string;
+  calculated_priority_score: number;
+  priority_level: 'Critical' | 'High' | 'Medium' | 'Low';
+  actionable_plan: string;
+}
+
 export interface RecommendationResponse {
+  weakness_priorities: WeaknessPriorityItem[];
+  daily_allocated_hours: Record<string, number>;
+  exam_readiness_outlook: string;
   recommendation: string;
 }
 
@@ -230,12 +240,13 @@ export async function analyzePerformance(
 // -------------------------------------------------------------
 export interface SkillGapItem {
   topic: string;
-  reason: string;
-  priority: 'High' | 'Medium' | 'Low';
-  gaps_resources: string[];
+  gap_analysis: string;
+  priority_ranking: 'High' | 'Medium' | 'Low';
+  recommended_action: string;
 }
 
 export interface SkillGapResponse {
+  topic_accuracies: Record<string, number>;
   gaps: SkillGapItem[];
 }
 

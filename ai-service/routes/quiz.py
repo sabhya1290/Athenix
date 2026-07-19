@@ -39,22 +39,19 @@ logger = get_logger("QuizRoute")
 
 @router.post("/generate-quiz", response_model=UnifiedResponse[QuizResponse])
 def generate_quiz(request: QuizRequest):
-    # Dynamic Difficulty Adaptation logic
+    # Dynamic Difficulty Adaptation logic: direct mapping based on average score
     adapted_difficulty = request.difficulty
     if request.recent_scores:
-        last_score = request.recent_scores[-1]
-        if last_score >= 80:
-            if request.difficulty == "Easy":
-                adapted_difficulty = "Medium"
-            elif request.difficulty == "Medium":
-                adapted_difficulty = "Hard"
-            logger.info(f"High performance detected ({last_score}%). Upgraded difficulty from {request.difficulty} to {adapted_difficulty}")
-        elif last_score < 50:
-            if request.difficulty == "Hard":
-                adapted_difficulty = "Medium"
-            elif request.difficulty == "Medium":
-                adapted_difficulty = "Easy"
-            logger.info(f"Struggles detected ({last_score}%). Downgraded difficulty from {request.difficulty} to {adapted_difficulty}")
+        avg_recent = sum(request.recent_scores) / len(request.recent_scores)
+        if avg_recent >= 80:
+            adapted_difficulty = "Hard"
+            logger.info(f"High performance detected (average: {round(avg_recent, 1)}%). Adapted difficulty directly to Hard")
+        elif avg_recent < 50:
+            adapted_difficulty = "Easy"
+            logger.info(f"Struggles detected (average: {round(avg_recent, 1)}%). Adapted difficulty directly to Easy")
+        else:
+            adapted_difficulty = "Medium"
+            logger.info(f"Moderate performance detected (average: {round(avg_recent, 1)}%). Adapted difficulty directly to Medium")
             
     logger.info(f"Incoming POST /generate-quiz request for topic: '{request.topic}', requested difficulty: '{request.difficulty}', adapted: '{adapted_difficulty}', questions: {request.questions}")
     try:

@@ -40,7 +40,16 @@ class RecommendationRequest(BaseModel):
             raise ValueError("Subjects list must contain at least one valid subject name")
         return cleaned
 
+class WeaknessPriorityItem(BaseModel):
+    topic: str = Field(..., description="The name of the weak topic")
+    calculated_priority_score: int = Field(..., description="Calculated priority score (0-100) based on importance, weightage, and errors")
+    priority_level: Literal["Critical", "High", "Medium", "Low"] = Field(..., description="Priority tier")
+    actionable_plan: str = Field(..., description="Actionable recommendation block")
+
 class RecommendationResponse(BaseModel):
+    weakness_priorities: List[WeaknessPriorityItem] = Field(..., description="Topic-wise priority list")
+    daily_allocated_hours: Dict[str, float] = Field(..., description="Suggested daily study hours allocation")
+    exam_readiness_outlook: str = Field(..., description="AI evaluation of target exam readiness and timeline")
     recommendation: str = Field(..., description="Personalized recommendation and study plan text")
 
 from utils.logger import get_logger
@@ -75,24 +84,77 @@ def get_recommendation(request: RecommendationRequest):
         return UnifiedResponse(success=True, data=data_model)
     except Exception as e:
         logger.warning(f"Error in get_recommendation, falling back. Error: {str(e)}")
-        # Heuristic local sorting for fallback: prioritize by mistakes * weightage (High=3, Med=2, Low=1)
+        # Algorithm-based local calculation for recommendation:
         importance_map = {"High": 3, "Medium": 2, "Low": 1}
+        weak_priorities = []
+        daily_allocations = {}
+        
+        # Distribute study hours among weak topics
+        total_study_hours = request.study_hours
+        remaining_hours = total_study_hours
+        
         sorted_weak = sorted(
             request.weak_topics,
             key=lambda x: x.past_mistakes_count * importance_map.get(x.importance, 2),
             reverse=True
         )
         
-        weak_priority_text = ""
-        if sorted_weak:
-            top_weak = sorted_weak[0]
-            weak_priority_text = f"We highly recommend prioritizing '{top_weak.topic}' (which has {top_weak.past_mistakes_count} past mistakes and holds {top_weak.importance} importance). "
+        for idx, wt in enumerate(sorted_weak):
+            # Calculate a priority score out of 100
+            base_score = wt.past_mistakes_count * 15
+            importance_weight = importance_map.get(wt.importance, 2) * 10
+            calculated_priority = min(100, base_score + importance_weight)
             
-        fallback_msg = (
-            f"The AI recommendation engine is currently offline, but we've analyzed your learning profile locally. "
-            f"{weak_priority_text}"
-            f"Given you have {request.days_left} days left and study {request.study_hours} hours daily at a '{request.learning_pace}' pace, "
-            f"allocate 70% of today's time to your highest-error topics using '{request.preferred_difficulty}' difficulty questions. (Error: {str(e)[:50]}...)"
+            if calculated_priority >= 75:
+                level = "Critical"
+            elif calculated_priority >= 50:
+                level = "High"
+            elif calculated_priority >= 30:
+                level = "Medium"
+            else:
+                level = "Low"
+                
+            # Distribute daily hours: give more hours to higher priority
+            allocated = 0.0
+            if remaining_hours > 0:
+                if idx == 0:
+                    allocated = round(total_study_hours * 0.6, 1)
+                elif idx == 1:
+                    allocated = round(total_study_hours * 0.3, 1)
+                else:
+                    allocated = round(remaining_hours, 1)
+                allocated = min(allocated, remaining_hours)
+                remaining_hours = round(remaining_hours - allocated, 1)
+                
+            daily_allocations[wt.topic] = allocated
+            
+            actionable_plan = (
+                f"Allocate {allocated} daily hours to master '{wt.topic}'. "
+                f"Focus on resolving past mistakes ({wt.past_mistakes_count} errors logged) via custom practice papers."
+            )
+            
+            weak_priorities.append(WeaknessPriorityItem(
+                topic=wt.topic,
+                calculated_priority_score=calculated_priority,
+                priority_level=level,
+                actionable_plan=actionable_plan
+            ))
+            
+        outlook = (
+            f"Exam is in {request.days_left} days. Based on the local analysis, "
+            f"the student has critical weak points that require focused daily practice. "
+            f"Readiness outlook: Medium."
         )
-        data_model = RecommendationResponse(recommendation=fallback_msg)
-        return UnifiedResponse(success=True, data=data_model)
+        
+        recommendation_text = (
+            f"Locally calculated recommendations are active. Prioritize weak topics based on past mistakes count. "
+            f"Daily study budget is {request.study_hours} hours. Please check the weakness priorities list."
+        )
+        
+        fallback_data = RecommendationResponse(
+            weakness_priorities=weak_priorities,
+            daily_allocated_hours=daily_allocations,
+            exam_readiness_outlook=outlook,
+            recommendation=recommendation_text
+        )
+        return UnifiedResponse(success=True, data=fallback_data)

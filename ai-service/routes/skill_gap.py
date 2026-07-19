@@ -13,11 +13,14 @@ router = APIRouter(tags=["Skill Gap Detection"])
 
 class SkillGapItem(BaseModel):
     topic: str = Field(..., description="The topic with a detected skill gap")
-    reason: str = Field(..., description="Detailed diagnosis of the student's gaps and errors")
-    priority: Literal["High", "Medium", "Low"] = Field(..., description="Priority level for fixing the gap")
-    gaps_resources: List[str] = Field(..., description="Suggested study material, resources, or links")
+    gap_analysis: str = Field(..., description="Detailed diagnosis of the student's gaps and errors")
+    priority_ranking: Literal["High", "Medium", "Low"] = Field(..., description="Priority level for fixing the gap")
+    recommended_action: str = Field(..., description="Actionable recommendation study actions")
+
+from typing import Dict
 
 class SkillGapResponse(BaseModel):
+    topic_accuracies: Dict[str, float] = Field(..., description="Calculated accuracies by topic")
     gaps: List[SkillGapItem] = Field(..., description="List of detected skill gaps")
 
 @router.post("/skill-gap", response_model=UnifiedResponse[SkillGapResponse])
@@ -55,39 +58,40 @@ def detect_skill_gap(request: AnalyticsRequest):
                 topic_scores[q.topic] = []
             topic_scores[q.topic].append(q.score)
             
+        topic_accuracies = {}
         for topic, scores in topic_scores.items():
             avg_score = sum(scores) / len(scores)
+            topic_accuracies[topic] = round(avg_score, 1)
+            
             if avg_score < 70:
                 priority = "High" if avg_score < 50 else "Medium"
                 
-                # Dynamic fallback reason
-                reason = (
-                    f"Student scored an average of {round(avg_score, 1)}% in historical quizzes. "
-                    f"Struggles to complete questions accurately under timed pressure."
+                # Dynamic fallback gap analysis
+                analysis = (
+                    f"Student scored an average of {round(avg_score, 1)}% in historical quizzes on {topic}. "
+                    f"Conceptual gaps exist, combined with slow speed and low accuracy on medium/hard questions."
                 )
                 
                 # Standard fallback educational resources mapping
-                gaps_resources = [
-                    f"NCERT textbook chapter review on {topic}",
-                    f"Khan Academy tutorial videos on {topic}",
-                    f"Solve 20 practice questions of Easy/Medium difficulty on {topic}"
-                ]
+                action = (
+                    f"Review NCERT chapter for {topic}, solve 20 practice questions, and watch tutorial playlists."
+                )
                 
                 gaps_list.append(SkillGapItem(
                     topic=topic,
-                    reason=reason,
-                    priority=priority,
-                    gaps_resources=gaps_resources
+                    gap_analysis=analysis,
+                    priority_ranking=priority,
+                    recommended_action=action
                 ))
                 
         # If no gaps calculated locally, output a default general review recommendation
         if not gaps_list and request.quizzes:
             gaps_list.append(SkillGapItem(
                 topic=request.quizzes[0].topic,
-                reason="General review and consolidation recommended to maintain scores.",
-                priority="Low",
-                gaps_resources=["General past year question papers"]
+                gap_analysis="Excellent general scores. No major gaps identified.",
+                priority_ranking="Low",
+                recommended_action="Solve mixed past-year exams to consolidate knowledge."
             ))
             
-        fallback_data = SkillGapResponse(gaps=gaps_list)
+        fallback_data = SkillGapResponse(topic_accuracies=topic_accuracies, gaps=gaps_list)
         return UnifiedResponse(success=True, data=fallback_data)

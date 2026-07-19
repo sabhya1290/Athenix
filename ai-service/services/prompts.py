@@ -60,7 +60,20 @@ Formulate an ADAPTIVE study plan today by applying these rules:
 
 Return the response in valid JSON format matching this schema:
 {{
-  "recommendation": "your highly customized, adaptive study plan and recommendation text here"
+  "weakness_priorities": [
+    {{
+      "topic": "Calculus",
+      "calculated_priority_score": 85,
+      "priority_level": "High",
+      "actionable_plan": "Spend 2.5 hours studying definite integrals, focus on limits and NCERT chapter 7."
+    }}
+  ],
+  "daily_allocated_hours": {{
+    "Calculus": 2.5,
+    "Chemistry": 1.5
+  }},
+  "exam_readiness_outlook": "The student has strong chemistry fundamentals but critical gaps in calculus which must be resolved to clear the target exam. Days left: {profile.get('days_left')}.",
+  "recommendation": "Calculus integration is the highest priority. We have allocated 2.5 daily hours to it."
 }}
 
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
@@ -167,26 +180,28 @@ def get_skill_gap_prompt(quizzes: list) -> str:
     return f"""You are an educational diagnostician. Analyze the student's historical quiz records:
 {formatted_quizzes}
 
-Detect the student's skill gaps (topics where the student is failing, making frequent mistakes, or struggling with time).
-For each detected skill gap, determine:
-1. **Topic**: The specific topic/concept.
-2. **Reason**: A detailed reason describing what the student is struggling with (e.g. "Struggling with definite integrals, spending over 60 seconds per question on simple integration, showing basic conceptual gaps").
-3. **Priority**: "High" (score < 50% or very slow), "Medium" (score 50-70%), or "Low" (score 70-80% but needs small improvement).
-4. **Resources**: A list of recommended textbooks, chapters, tutorials, or video topics to help close the gap.
+Analyze the student's performance to build a structured diagnostic profile:
+1. **Topic Accuracy**: Calculate the percentage accuracy (0 to 100) for each unique topic.
+2. **Gap Analysis**: For any topic with < 70% accuracy (or where speed is very slow), perform a deep gap analysis explaining what conceptual errors they are making.
+3. **Priority Ranking**: Rank each gap as "High" (score < 50%), "Medium" (score 50-70%), or "Low".
+4. **Recommended Action**: Define a highly specific, concrete study or practice action (e.g. "Practice 15 integration by parts exercises and review NCERT Chapter 7.2").
 
 Return the response in valid JSON format matching this schema:
 {{
+  "topic_accuracies": {{
+    "Calculus": 40.0,
+    "Organic Chemistry": 90.0
+  }},
   "gaps": [
     {{
       "topic": "Calculus",
-      "reason": "Struggles with integral calculus formulas and speed",
-      "priority": "High",
-      "gaps_resources": ["NCERT Mathematics Class 12 Chapter 7", "Khan Academy definite integrals playlist"]
+      "gap_analysis": "Struggles with integral calculus formulas, spends over 60 seconds per question, and lacks conceptual clarity on limits.",
+      "priority_ranking": "High",
+      "recommended_action": "Review limits, practice 15 integration by parts exercises, and complete NCERT Chapter 7.2 drills."
     }}
   ]
 }}
 
-Note: the key for the resource list must be precisely "gaps_resources".
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
 
 def get_mentor_chat_prompt(message: str, history: list, weak_topics: list, context: str) -> str:
