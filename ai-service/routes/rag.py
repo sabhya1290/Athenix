@@ -100,8 +100,8 @@ def query_document(request: QueryRequest):
         else:
             context = "\n\n---\n\n".join(retrieved_chunks)
             
-        # 2. Build prompt containing context and query
-        prompt = f"""You are an intelligent educational assistant. Use the following context retrieved from the student's uploaded study material (NCERT, lecture notes, PYQs, etc.) to answer their question. If the answer cannot be found in the context, use your general knowledge but clearly state that the information was not in the study material.
+        # 2. Build prompt containing context and query (strict context-only enforcement)
+        prompt = f"""You are a strict study assistant. Answer the student's question based ONLY on the provided context retrieved from their uploaded study material. Do not use outside knowledge or hallucinate facts that are not explicitly stated or directly inferred from the context. If the answer cannot be found in the context, state: "I cannot find the answer to this question in the provided study material."
 
 Context:
 {context}
