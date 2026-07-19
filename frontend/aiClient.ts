@@ -249,6 +249,41 @@ export async function getSkillGaps(
 }
 
 // -------------------------------------------------------------
+// 6. MENTOR AI → Conversational Chat & Tutoring
+// -------------------------------------------------------------
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface MentorChatRequest {
+  message: string;
+  chat_history?: ChatMessage[];
+  weak_topics?: string[];
+  doc_id?: string;
+}
+
+export interface MentorChatResponse {
+  response: string;
+  retrieved_context?: string[];
+}
+
+export async function mentorChat(
+  payload: MentorChatRequest
+): Promise<UnifiedResponse<MentorChatResponse>> {
+  try {
+    const response = await client.post<UnifiedResponse<MentorChatResponse>>('/mentor/chat', payload);
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.detail || error.message || 'Mentor AI chat failed',
+    };
+  }
+}
+
+// -------------------------------------------------------------
 // HEALTH CHECK
 // -------------------------------------------------------------
 export interface HealthResponse {

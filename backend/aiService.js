@@ -138,6 +138,22 @@ async function getSkillGaps(quizzes) {
 }
 
 /**
+ * 6. MENTOR AI → Conversational Chat & Tutoring
+ */
+async function mentorChat(payload) {
+  try {
+    const response = await client.post('/mentor/chat', payload);
+    return response.data;
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.detail || error.message || 'Mentor AI chat failed'
+    };
+  }
+}
+
+/**
  * Health Check
  */
 async function checkAIHealth() {
@@ -161,5 +177,6 @@ module.exports = {
   evaluateAnswer,
   analyzePerformance,
   getSkillGaps,
+  mentorChat,
   checkAIHealth
 };

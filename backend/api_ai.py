@@ -100,6 +100,14 @@ def get_skill_gaps(quizzes: List[Dict[str, Any]]) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "data": None, "error": str(e)}
 
+def mentor_chat(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """6. MENTOR AI → Conversational Chat & Tutoring"""
+    try:
+        response = requests.post(f"{AI_SERVICE_URL}/mentor/chat", json=payload, timeout=25)
+        return response.json()
+    except Exception as e:
+        return {"success": False, "data": None, "error": str(e)}
+
 def check_ai_health() -> Dict[str, Any]:
     """AI Service Health Check"""
     try:

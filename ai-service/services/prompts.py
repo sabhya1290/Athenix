@@ -185,3 +185,27 @@ Return the response in valid JSON format matching this schema:
 Note: the key for the resource list must be precisely "gaps_resources".
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
 
+def get_mentor_chat_prompt(message: str, history: list, weak_topics: list, context: str) -> str:
+    formatted_history = ""
+    for msg in history:
+        role = "Student" if msg.get("role") == "user" else "Mentor AI"
+        formatted_history += f"{role}: {msg.get('content')}\n"
+        
+    weak_str = ", ".join(weak_topics) if weak_topics else "None specified"
+    
+    return f"""You are Mentor AI, an encouraging, patient, and highly intelligent educational guide and tutor. Your goal is to help the student learn effectively, explaining concepts simply and checking in on their understanding.
+
+Here is the context available to you:
+- **Student's Known Weak Topics**: {weak_str} (If the student is asking about one of these topics, be extra patient, use visual analogies, break it down step-by-step, and encourage them).
+- **Retrieved Study Notes / Material Context (RAG)**:
+{context or "No specific document context provided."}
+
+Here is the conversation history so far:
+{formatted_history}
+
+Student's Latest Question:
+"{message}"
+
+Provide your tutoring response. Speak directly to the student in a conversational, supportive tone. Keep explanations clear, and if you refer to the notes, do so naturally. Do not output JSON, return a standard text response."""
+
+
