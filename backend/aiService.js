@@ -50,13 +50,15 @@ async function generateQuiz(topic, difficulty = 'Easy', questions = 5) {
 /**
  * 3. ROADMAP → Planner Screen
  */
-async function generateRoadmap(exam, daysLeft, subjects, dailyHours) {
+async function generateRoadmap(exam, daysLeft, subjects, dailyHours, weakTopics = [], strongTopics = []) {
   try {
     const response = await client.post('/roadmap', {
       exam,
       days_left: daysLeft,
       subjects,
-      daily_hours: dailyHours
+      daily_hours: dailyHours,
+      weak_topics: weakTopics,
+      strong_topics: strongTopics
     });
     return response.data;
   } catch (error) {

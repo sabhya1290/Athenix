@@ -88,7 +88,9 @@ export async function generateRoadmap(
   exam: string,
   daysLeft: number,
   subjects: string[],
-  dailyHours: number
+  dailyHours: number,
+  weakTopics: string[] = [],
+  strongTopics: string[] = []
 ): Promise<UnifiedResponse<PlannerResponse>> {
   try {
     const response = await client.post<UnifiedResponse<PlannerResponse>>('/roadmap', {
@@ -96,6 +98,8 @@ export async function generateRoadmap(
       days_left: daysLeft,
       subjects,
       daily_hours: dailyHours,
+      weak_topics: weakTopics,
+      strong_topics: strongTopics,
     });
     return response.data;
   } catch (error: any) {

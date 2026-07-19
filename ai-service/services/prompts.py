@@ -65,21 +65,28 @@ Return the response in valid JSON format matching this schema:
 
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
 
-def get_roadmap_prompt(exam: str, days_left: int, subjects: list, daily_hours: int) -> str:
+def get_roadmap_prompt(exam: str, days_left: int, subjects: list, daily_hours: int, weak_topics: list, strong_topics: list) -> str:
     formatted_subjects = ", ".join(subjects)
-    return f"""Create a detailed {days_left}-day study plan for the {exam} exam.
+    formatted_weak = ", ".join(weak_topics)
+    formatted_strong = ", ".join(strong_topics)
+    return f"""Create a highly personalized day-wise study roadmap for the {exam} exam.
 Subjects: {formatted_subjects}
+Time Left: {days_left} days
+Weak Topics: {formatted_weak}
+Strong Topics: {formatted_strong}
 Daily study allocation: {daily_hours} hours.
 
-Ensure the plan includes:
-- Balanced revision of subjects
-- Weekly tests/assessments
+Ensure the plan follows these instructions:
+- Place heavier daily focus and initial blocks on strengthening the specified Weak Topics.
+- Keep Strong Topics in a lighter maintenance review loop (revision & quick mock tests).
+- Distribute the study hours across the days logically.
+- Maintain a structured day-by-day task checklist format for the student.
 
 Return the response in valid JSON format matching this schema:
 {{
   "plan": {{
-    "Day 1": ["subject 1: study topic X", "subject 2: solve problems on Y", "revision/tests"],
-    "Day 2": ["subject 1: study topic Z", "subject 2: solve problems on W"]
+    "Day 1": ["Study block 1: Calculus integration (3 hours)", "Study block 2: chemistry formula cards (2 hours)"],
+    "Day 2": ["Study block 1: Calculus differentiation (3 hours)", "Study block 2: physics notes (2 hours)"]
   }}
 }}
 

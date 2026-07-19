@@ -30,12 +30,30 @@ def generate_quiz(topic: str, difficulty: str = "Easy", questions: int = 5) -> D
     except Exception as e:
         return {"success": False, "data": None, "error": str(e)}
 
-def generate_roadmap(exam: str, days_left: int, subjects: List[str], daily_hours: int) -> Dict[str, Any]:
+def generate_roadmap(
+    exam: str,
+    days_left: int,
+    subjects: List[str],
+    daily_hours: int,
+    weak_topics: List[str] = None,
+    strong_topics: List[str] = None
+) -> Dict[str, Any]:
     """3. ROADMAP → Planner Screen"""
+    if weak_topics is None:
+        weak_topics = []
+    if strong_topics is None:
+        strong_topics = []
     try:
         response = requests.post(
             f"{AI_SERVICE_URL}/roadmap",
-            json={"exam": exam, "days_left": days_left, "subjects": subjects, "daily_hours": daily_hours},
+            json={
+                "exam": exam,
+                "days_left": days_left,
+                "subjects": subjects,
+                "daily_hours": daily_hours,
+                "weak_topics": weak_topics,
+                "strong_topics": strong_topics
+            },
             timeout=20
         )
         return response.json()

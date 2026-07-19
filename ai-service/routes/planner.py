@@ -13,6 +13,8 @@ class PlannerRequest(BaseModel):
     days_left: int = Field(..., example=30, gt=0, description="Number of days left for the exam (must be positive)")
     subjects: List[str] = Field(..., example=["Physics", "Chemistry", "Math"], description="List of subjects to cover")
     daily_hours: int = Field(..., example=6, ge=1, le=24, description="Daily study hours allocated (1 to 24)")
+    weak_topics: List[str] = Field(default=[], example=["Calculus"], description="List of weak topics/concepts")
+    strong_topics: List[str] = Field(default=[], example=["Chemistry"], description="List of strong topics/concepts")
 
     @field_validator("exam")
     @classmethod
@@ -42,7 +44,14 @@ logger = get_logger("PlannerRoute")
 def get_roadmap(request: PlannerRequest):
     logger.info(f"Incoming POST /roadmap request for exam: '{request.exam}', days: {request.days_left}, subjects: {request.subjects}")
     try:
-        prompt = get_roadmap_prompt(request.exam, request.days_left, request.subjects, request.daily_hours)
+        prompt = get_roadmap_prompt(
+            request.exam,
+            request.days_left,
+            request.subjects,
+            request.daily_hours,
+            request.weak_topics,
+            request.strong_topics
+        )
         raw_response = generate_text(prompt, json_mode=True, response_schema=PlannerResponse)
         
         # Clean response string in case Gemini still added markdown wrappers
@@ -64,22 +73,16 @@ def get_roadmap(request: PlannerRequest):
         return UnifiedResponse(success=True, data=data_model)
     except Exception as e:
         logger.warning(f"Error in get_roadmap, falling back. Error: {str(e)}")
-        # Graceful fallback: generate a simple round-robin plan for the days
+        # Graceful fallback: generate a plan prioritizing weak topics
         fallback_plan = {}
-        subjects_count = len(request.subjects)
+        weak_text = ", ".join(request.weak_topics) if request.weak_topics else "General core subjects"
+        strong_text = ", ".join(request.strong_topics) if request.strong_topics else "Review subjects"
+        
         for day in range(1, request.days_left + 1):
-            # Select subject for the day
-            primary_subject = request.subjects[(day - 1) % subjects_count]
-            secondary_subject = request.subjects[day % subjects_count]
-            
-            # Divide daily hours
-            primary_hours = max(1, request.daily_hours - 2)
-            secondary_hours = max(1, request.daily_hours - primary_hours)
-            
             fallback_plan[f"Day {day}"] = [
-                f"{primary_subject}: Study core topics and practice questions ({primary_hours} hours)",
-                f"{secondary_subject}: Solve revision and textbook exercises ({secondary_hours} hours)",
-                f"Review and self-assessment test (Fallback plan generated due to offline AI service: {str(e)[:50]}...)"
+                f"Weak Topics Focus: Intensive problem solving on '{weak_text}' ({max(1, request.daily_hours - 2)} hours)",
+                f"Strong Topics Maintenance: Light revision on '{strong_text}' (1 hour)",
+                f"Daily Self-Assessment & Flashcards Revision (1 hour) (Fallback generated due to offline AI: {str(e)[:40]}...)"
             ]
             
         data_model = PlannerResponse(plan=fallback_plan)
