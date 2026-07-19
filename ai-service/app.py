@@ -12,6 +12,7 @@ from routes.recommendation import router as recommendation_router
 from routes.planner import router as planner_router
 from routes.evaluation import router as evaluation_router
 from routes.analytics import router as analytics_router
+from routes.rag import router as rag_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -32,6 +33,7 @@ app.include_router(recommendation_router)
 app.include_router(planner_router)
 app.include_router(evaluation_router)
 app.include_router(analytics_router)
+app.include_router(rag_router)
 
 # pyrefly: ignore [missing-import]
 from pydantic import BaseModel
