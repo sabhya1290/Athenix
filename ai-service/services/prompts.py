@@ -113,17 +113,35 @@ Do not wrap the response in markdown code blocks like ```json ... ```. Return ra
 
 def get_analytics_prompt(quizzes: list) -> str:
     formatted_quizzes = "\n".join([f"- {q.get('title', 'Quiz')}: {q.get('topic')} - {q.get('score')}%" for q in quizzes])
-    return f"""Analyze the student's quiz history and performance:
+    return f"""You are a deep-learning diagnostic system. Perform a comprehensive analysis of the student's quiz history:
 {formatted_quizzes}
 
-Find and output:
-- Weak topics (where the student scored low or struggled)
-- Strong topics (where the student scored high or did well)
+Formulate and calculate the following metrics:
+1. **Weak topics**: List of topics where the student consistently scored low (e.g. < 60%).
+2. **Strong topics**: List of topics where the student consistently scored high (e.g. >= 80%).
+3. **Topic mastery**: A dictionary mapping each unique topic name to a percentage mastery value (0 to 100).
+4. **Weakness graph**: A dictionary mapping each weak topic to a calculated weakness priority or error rate (0.0 to 1.0).
+5. **Learning trend**: "Improving" if recent scores are higher, "Declining" if lower, or "Stable".
+6. **Improvement %**: Percentage growth or improvement rate compared to earlier quiz attempts.
+7. **Confidence score**: An estimated confidence score (0 to 100) based on average performance and consistency.
+8. **Accuracy by subject**: Accuracy percentage (0 to 100) grouped by major subject category.
+9. **Time spent**: Estimated study time spent in minutes per subject category (invent a realistic allocation based on scores).
+10. **Predicted rank**: An estimated competition rank range (e.g., "Top 1000", "Top 5%", "Rank 2000-2500") based on performance.
+11. **Predicted exam readiness**: Exam readiness percentage (0 to 100) based on topic mastery.
 
 Return the response in valid JSON format matching this schema:
 {{
   "weak_topics": ["List of weak topics"],
-  "strong_topics": ["List of strong topics"]
+  "strong_topics": ["List of strong topics"],
+  "topic_mastery": {{"Topic A": 85.0, "Topic B": 40.0}},
+  "weakness_graph": {{"Topic B": 0.8, "Topic C": 0.5}},
+  "learning_trend": "Improving",
+  "improvement_pct": 12.5,
+  "confidence_score": 75.0,
+  "accuracy_by_subject": {{"Math": 85.0, "Physics": 50.0}},
+  "time_spent": {{"Math": 240, "Physics": 480}},
+  "predicted_rank": "Top 10%",
+  "predicted_exam_readiness": 78.0
 }}
 
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""

@@ -193,6 +193,15 @@ export interface QuizRecord {
 export interface AnalyticsResponse {
   weak_topics: string[];
   strong_topics: string[];
+  topic_mastery: Record<string, number>;
+  weakness_graph: Record<string, number>;
+  learning_trend: string;
+  improvement_pct: number;
+  confidence_score: number;
+  accuracy_by_subject: Record<string, number>;
+  time_spent: Record<string, number>;
+  predicted_rank: string;
+  predicted_exam_readiness: number;
 }
 
 export async function analyzePerformance(

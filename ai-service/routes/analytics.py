@@ -36,12 +36,22 @@ class AnalyticsRequest(BaseModel):
             raise ValueError("Quizzes list cannot be empty")
         return v
 
+from typing import Dict
+
 class AnalyticsResponse(BaseModel):
     weak_topics: List[str] = Field(..., description="Topics where the student performed poorly")
     strong_topics: List[str] = Field(..., description="Topics where the student performed well")
+    topic_mastery: Dict[str, float] = Field(..., description="Percentage mastery of each topic")
+    weakness_graph: Dict[str, float] = Field(..., description="Calculated weakness intensity/error rates for weak topics")
+    learning_trend: str = Field(..., description="Trend indication (e.g. Improving, Stable, Declining)")
+    improvement_pct: float = Field(..., description="Improvement percentage rate")
+    confidence_score: float = Field(..., description="Estimated student confidence score out of 100")
+    accuracy_by_subject: Dict[str, float] = Field(..., description="Accuracy percentage by subject/topic category")
+    time_spent: Dict[str, int] = Field(..., description="Estimated study time spent in minutes per category/subject")
+    predicted_rank: str = Field(..., description="AI predicted rank range")
+    predicted_exam_readiness: float = Field(..., description="AI predicted exam readiness percentage")
 
 from utils.response import UnifiedResponse
-
 from utils.logger import get_logger
 
 logger = get_logger("AnalyticsRoute")
@@ -73,7 +83,7 @@ def analyze_student_performance(request: AnalyticsRequest):
         return UnifiedResponse(success=True, data=data_model)
     except Exception as e:
         logger.warning(f"Error in analyze_student_performance, falling back. Error: {str(e)}")
-        # Graceful local fallback: calculate weak (< 60%) and strong (>= 75%) topics deterministically
+        # Calculate local fallback metrics
         topic_scores = {}
         for q in request.quizzes:
             if q.topic not in topic_scores:
@@ -82,28 +92,66 @@ def analyze_student_performance(request: AnalyticsRequest):
             
         weak_topics = []
         strong_topics = []
+        topic_mastery = {}
+        weakness_graph = {}
+        accuracy_by_subject = {}
+        time_spent = {}
         
         for topic, scores in topic_scores.items():
             avg_score = sum(scores) / len(scores)
+            topic_mastery[topic] = round(avg_score, 1)
+            accuracy_by_subject[topic] = round(avg_score, 1)
+            time_spent[topic] = len(scores) * 60  # Assume 60 minutes spent per quiz
+            
             if avg_score < 60:
                 weak_topics.append(topic)
+                weakness_graph[topic] = round((100 - avg_score) / 100.0, 2)
             elif avg_score >= 75:
                 strong_topics.append(topic)
                 
-        # Handle cases where all scores are in between 60 and 75
         if not weak_topics and not strong_topics:
-            # Sort topics by average score to allocate at least one weak and one strong
             sorted_topics = sorted(topic_scores.keys(), key=lambda t: sum(topic_scores[t])/len(topic_scores[t]))
             if sorted_topics:
                 weak_topics.append(sorted_topics[0])
+                weakness_graph[sorted_topics[0]] = round((100 - (sum(topic_scores[sorted_topics[0]])/len(topic_scores[sorted_topics[0]])))/100.0, 2)
                 strong_topics.append(sorted_topics[-1])
                 
-        # Deduplicate
-        weak_topics = list(set(weak_topics))
-        strong_topics = list(set(strong_topics))
+        # Learning trend & improvement calculation
+        all_scores = [q.score for q in request.quizzes]
+        avg_score = sum(all_scores) / len(all_scores)
         
+        trend = "Stable"
+        improvement = 0.0
+        if len(all_scores) >= 2:
+            first_half = all_scores[:len(all_scores)//2]
+            second_half = all_scores[len(all_scores)//2:]
+            avg_first = sum(first_half) / len(first_half)
+            avg_second = sum(second_half) / len(second_half)
+            improvement = round(avg_second - avg_first, 1)
+            if improvement > 5:
+                trend = "Improving"
+            elif improvement < -5:
+                trend = "Declining"
+                
+        predicted_rank = "Top 50%"
+        if avg_score >= 90:
+            predicted_rank = "Top 1%"
+        elif avg_score >= 80:
+            predicted_rank = "Top 5%"
+        elif avg_score >= 70:
+            predicted_rank = "Top 15%"
+            
         fallback_data = AnalyticsResponse(
-            weak_topics=weak_topics,
-            strong_topics=strong_topics
+            weak_topics=list(set(weak_topics)),
+            strong_topics=list(set(strong_topics)),
+            topic_mastery=topic_mastery,
+            weakness_graph=weakness_graph,
+            learning_trend=trend,
+            improvement_pct=improvement,
+            confidence_score=round(avg_score * 0.9, 1),
+            accuracy_by_subject=accuracy_by_subject,
+            time_spent=time_spent,
+            predicted_rank=predicted_rank,
+            predicted_exam_readiness=round(avg_score, 1)
         )
         return UnifiedResponse(success=True, data=fallback_data)
