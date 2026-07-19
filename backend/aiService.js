@@ -104,6 +104,22 @@ async function analyzePerformance(quizzes) {
 }
 
 /**
+ * 2.5 RECOMMEND → Recommendation Engine
+ */
+async function getRecommendation(profile) {
+  try {
+    const response = await client.post('/recommend', profile);
+    return response.data;
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.detail || error.message || 'Failed to fetch recommendation'
+    };
+  }
+}
+
+/**
  * Health Check
  */
 async function checkAIHealth() {
@@ -123,6 +139,7 @@ module.exports = {
   getExplanation,
   generateQuiz,
   generateRoadmap,
+  getRecommendation,
   evaluateAnswer,
   analyzePerformance,
   checkAIHealth

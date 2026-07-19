@@ -24,20 +24,43 @@ You must return the response in valid JSON matching this schema:
 
 Do not wrap the output in markdown code blocks like ```json ... ```. Return raw JSON only."""
 
-def get_recommendation_prompt(scores: dict) -> str:
-    formatted_scores = "\n".join([f"- {subject}: {score}%" for subject, score in scores.items()])
-    return f"""A student has the following exam scores:
-{formatted_scores}
+def get_recommendation_prompt(profile: dict) -> str:
+    subjects = ", ".join(profile.get("subjects", []))
+    strong = ", ".join(profile.get("strong_topics", []))
+    
+    # Format weak topics list with detailed parameters
+    weak_details_list = []
+    for wt in profile.get("weak_topics", []):
+        detail = (
+            f"- Topic: '{wt.get('topic')}' "
+            f"(Importance: {wt.get('importance')}, "
+            f"Exam Weightage: {wt.get('exam_weightage')}, "
+            f"Past Mistakes: {wt.get('past_mistakes_count')} times)"
+        )
+        weak_details_list.append(detail)
+    weak_formatted = "\n".join(weak_details_list)
+    
+    return f"""You are an expert adaptive academic advisor. Provide a highly customized study recommendation and daily learning plan for a student based on their learning profile:
 
-Suggest:
-1. Today's study plan
-2. Weak topics to focus on
-3. Time allocation per subject
-4. A motivational boost
+- **Subjects studying**: {subjects}
+- **Weak topics breakdown**:
+{weak_formatted}
+- **Strong topics/concepts**: {strong}
+- **Average score across quizzes**: {profile.get("average_score")}%
+- **Learning pace**: {profile.get("learning_pace")}
+- **Daily study hours allocated**: {profile.get("study_hours")} hours
+- **Study consistency**: {profile.get("consistency")}
+- **Days left until the exam**: {profile.get("days_left")} days
+- **Preferred difficulty level**: {profile.get("preferred_difficulty")}
+
+Formulate an ADAPTIVE study plan today by applying these rules:
+1. Prioritize weak topics based on their Importance, Exam Weightage, and the count of Past Mistakes (tackle high-impact, error-prone topics first).
+2. Adapt the study plan depth based on "Days left until the exam". If the exam is close (< 7 days), recommend highly focused high-yield revision and past-paper drills. If the exam is far (> 30 days), recommend deep conceptual reading and problem-solving.
+3. Adapt the intensity and structure to match their "Learning pace" and "Study consistency".
 
 Return the response in valid JSON format matching this schema:
 {{
-  "recommendation": "your recommendation and study plan text here"
+  "recommendation": "your highly customized, adaptive study plan and recommendation text here"
 }}
 
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""

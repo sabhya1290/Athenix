@@ -42,6 +42,18 @@ def generate_roadmap(exam: str, days_left: int, subjects: List[str], daily_hours
     except Exception as e:
         return {"success": False, "data": None, "error": str(e)}
 
+def get_recommendation(profile: Dict[str, Any]) -> Dict[str, Any]:
+    """2.5 RECOMMEND → Recommendation Engine"""
+    try:
+        response = requests.post(
+            f"{AI_SERVICE_URL}/recommend",
+            json=profile,
+            timeout=20
+        )
+        return response.json()
+    except Exception as e:
+        return {"success": False, "data": None, "error": str(e)}
+
 def evaluate_answer(question: str, student_answer: str) -> Dict[str, Any]:
     """4. EVALUATE → Answer Checker"""
     try:

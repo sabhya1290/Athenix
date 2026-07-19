@@ -108,6 +108,48 @@ export async function generateRoadmap(
 }
 
 // -------------------------------------------------------------
+// 3.5 RECOMMEND → Recommendation Engine
+// -------------------------------------------------------------
+export interface WeakTopicDetail {
+  topic: string;
+  importance: 'High' | 'Medium' | 'Low';
+  exam_weightage: string; // e.g. "12%" or "High"
+  past_mistakes_count: number;
+}
+
+export interface StudentProfileRequest {
+  subjects: string[];
+  weak_topics: WeakTopicDetail[];
+  strong_topics: string[];
+  average_score: number;
+  learning_pace: 'Slow' | 'Medium' | 'Fast';
+  study_hours: number;
+  consistency: 'High' | 'Medium' | 'Low';
+  last_studied: string;
+  preferred_difficulty: 'Easy' | 'Medium' | 'Hard';
+  days_left: number;
+}
+
+export interface RecommendationResponse {
+  recommendation: string;
+}
+
+export async function getRecommendation(
+  profile: StudentProfileRequest
+): Promise<UnifiedResponse<RecommendationResponse>> {
+  try {
+    const response = await client.post<UnifiedResponse<RecommendationResponse>>('/recommend', profile);
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.detail || error.message || 'Failed to fetch recommendation',
+    };
+  }
+}
+
+// -------------------------------------------------------------
 // 4. EVALUATE → Answer Checker
 // -------------------------------------------------------------
 export interface EvaluationResponse {
