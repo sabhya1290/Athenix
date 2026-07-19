@@ -122,6 +122,22 @@ async function getRecommendation(profile) {
 }
 
 /**
+ * 5.5 SKILL GAP → Skill Gap Detection
+ */
+async function getSkillGaps(quizzes) {
+  try {
+    const response = await client.post('/skill-gap', { quizzes });
+    return response.data;
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.detail || error.message || 'Failed to detect skill gaps'
+    };
+  }
+}
+
+/**
  * Health Check
  */
 async function checkAIHealth() {
@@ -144,5 +160,6 @@ module.exports = {
   getRecommendation,
   evaluateAnswer,
   analyzePerformance,
+  getSkillGaps,
   checkAIHealth
 };

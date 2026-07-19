@@ -152,3 +152,36 @@ Return the response in valid JSON format matching this schema:
 }}
 
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
+
+def get_skill_gap_prompt(quizzes: list) -> str:
+    formatted_quizzes = "\n".join([
+        f"- {q.get('title', 'Quiz')}: {q.get('topic')} | Score: {q.get('score')}% | "
+        f"Time: {q.get('completion_time_seconds')}s | Correct: {q.get('correct_answers')}/{q.get('total_questions')} | "
+        f"Difficulty: {q.get('difficulty')}"
+        for q in quizzes
+    ])
+    return f"""You are an educational diagnostician. Analyze the student's historical quiz records:
+{formatted_quizzes}
+
+Detect the student's skill gaps (topics where the student is failing, making frequent mistakes, or struggling with time).
+For each detected skill gap, determine:
+1. **Topic**: The specific topic/concept.
+2. **Reason**: A detailed reason describing what the student is struggling with (e.g. "Struggling with definite integrals, spending over 60 seconds per question on simple integration, showing basic conceptual gaps").
+3. **Priority**: "High" (score < 50% or very slow), "Medium" (score 50-70%), or "Low" (score 70-80% but needs small improvement).
+4. **Resources**: A list of recommended textbooks, chapters, tutorials, or video topics to help close the gap.
+
+Return the response in valid JSON format matching this schema:
+{{
+  "gaps": [
+    {{
+      "topic": "Calculus",
+      "reason": "Struggles with integral calculus formulas and speed",
+      "priority": "High",
+      "gaps_resources": ["NCERT Mathematics Class 12 Chapter 7", "Khan Academy definite integrals playlist"]
+    }}
+  ]
+}}
+
+Note: the key for the resource list must be precisely "gaps_resources".
+Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
+

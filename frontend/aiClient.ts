@@ -220,6 +220,35 @@ export async function analyzePerformance(
 }
 
 // -------------------------------------------------------------
+// 5.5 SKILL GAP → Skill Gap Detection
+// -------------------------------------------------------------
+export interface SkillGapItem {
+  topic: string;
+  reason: string;
+  priority: 'High' | 'Medium' | 'Low';
+  gaps_resources: string[];
+}
+
+export interface SkillGapResponse {
+  gaps: SkillGapItem[];
+}
+
+export async function getSkillGaps(
+  quizzes: QuizRecord[]
+): Promise<UnifiedResponse<SkillGapResponse>> {
+  try {
+    const response = await client.post<UnifiedResponse<SkillGapResponse>>('/skill-gap', { quizzes });
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.detail || error.message || 'Failed to detect skill gaps',
+    };
+  }
+}
+
+// -------------------------------------------------------------
 // HEALTH CHECK
 // -------------------------------------------------------------
 export interface HealthResponse {

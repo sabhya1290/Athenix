@@ -92,6 +92,14 @@ def analyze_performance(quizzes: List[Dict[str, Any]]) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "data": None, "error": str(e)}
 
+def get_skill_gaps(quizzes: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """5.5 SKILL GAP → Skill Gap Detection"""
+    try:
+        response = requests.post(f"{AI_SERVICE_URL}/skill-gap", json={"quizzes": quizzes}, timeout=20)
+        return response.json()
+    except Exception as e:
+        return {"success": False, "data": None, "error": str(e)}
+
 def check_ai_health() -> Dict[str, Any]:
     """AI Service Health Check"""
     try:
