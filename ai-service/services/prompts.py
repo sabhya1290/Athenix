@@ -134,6 +134,8 @@ Formulate and calculate the following metrics:
 10. **Predicted rank**: An estimated competition rank range (e.g., "Top 1000", "Top 5%", "Rank 2000-2500") based on performance.
 11. **Predicted exam readiness**: Exam readiness percentage (0 to 100) based on topic mastery.
 12. **Detected learning pace**: Categorize the student as either "Fast learner" (high scores, low completion times on harder quizzes), "Normal learner" (average score and time), or "Needs revision" (low accuracy or extremely slow completion times).
+13. **Expected score**: Predict an expected score on a scale of 0 to 300 (e.g. 160).
+14. **Probability of clearing exam**: Predict the likelihood of clearing the target exam (High, Medium, or Low).
 
 Return the response in valid JSON format matching this schema:
 {{
@@ -148,7 +150,9 @@ Return the response in valid JSON format matching this schema:
   "time_spent": {{"Math": 240, "Physics": 480}},
   "predicted_rank": "Top 10%",
   "predicted_exam_readiness": 78.0,
-  "detected_learning_pace": "Fast learner"
+  "detected_learning_pace": "Fast learner",
+  "expected_score": 160,
+  "probability_of_clearing_exam": "High"
 }}
 
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""

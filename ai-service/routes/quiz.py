@@ -14,13 +14,17 @@ class QuizItem(BaseModel):
     answer: str = Field(..., description="The correct option (A, B, C, or D)")
     explanation: str = Field(..., description="Short explanation of why the answer is correct")
 
+from typing import Optional
+
 class QuizResponse(BaseModel):
     quiz: List[QuizItem] = Field(..., description="List of quiz questions")
+    adapted_difficulty: Literal["Easy", "Medium", "Hard"] = Field("Medium", description="The adapted difficulty level of the quiz")
 
 class QuizRequest(BaseModel):
     topic: str = Field(..., example="Arrays", description="The topic for the quiz")
     difficulty: Literal["Easy", "Medium", "Hard"] = Field("Easy", description="Difficulty level (Easy, Medium, Hard)")
     questions: int = Field(5, ge=1, le=10, description="Number of questions to generate (1 to 10)")
+    recent_scores: Optional[List[int]] = Field(default=None, description="Optional history of recent quiz scores to adapt difficulty")
 
     @field_validator("topic")
     @classmethod
@@ -35,9 +39,26 @@ logger = get_logger("QuizRoute")
 
 @router.post("/generate-quiz", response_model=UnifiedResponse[QuizResponse])
 def generate_quiz(request: QuizRequest):
-    logger.info(f"Incoming POST /generate-quiz request for topic: '{request.topic}', difficulty: '{request.difficulty}', questions: {request.questions}")
+    # Dynamic Difficulty Adaptation logic
+    adapted_difficulty = request.difficulty
+    if request.recent_scores:
+        last_score = request.recent_scores[-1]
+        if last_score >= 80:
+            if request.difficulty == "Easy":
+                adapted_difficulty = "Medium"
+            elif request.difficulty == "Medium":
+                adapted_difficulty = "Hard"
+            logger.info(f"High performance detected ({last_score}%). Upgraded difficulty from {request.difficulty} to {adapted_difficulty}")
+        elif last_score < 50:
+            if request.difficulty == "Hard":
+                adapted_difficulty = "Medium"
+            elif request.difficulty == "Medium":
+                adapted_difficulty = "Easy"
+            logger.info(f"Struggles detected ({last_score}%). Downgraded difficulty from {request.difficulty} to {adapted_difficulty}")
+            
+    logger.info(f"Incoming POST /generate-quiz request for topic: '{request.topic}', requested difficulty: '{request.difficulty}', adapted: '{adapted_difficulty}', questions: {request.questions}")
     try:
-        prompt = get_quiz_prompt(request.topic, request.difficulty, request.questions)
+        prompt = get_quiz_prompt(request.topic, adapted_difficulty, request.questions)
         raw_response = generate_text(prompt, json_mode=True, response_schema=QuizResponse)
         
         clean_response = raw_response.strip()
@@ -53,6 +74,8 @@ def generate_quiz(request: QuizRequest):
             logger.error(f"JSON parsing failure in generate_quiz. Raw output: '{clean_response}'. Error: {str(jde)}")
             raise jde
             
+        # Ensure the response has the correct adapted difficulty
+        quiz_data["adapted_difficulty"] = adapted_difficulty
         data = QuizResponse(**quiz_data)
         logger.info("Successfully generated quiz.")
         return UnifiedResponse(success=True, data=data)
@@ -70,5 +93,5 @@ def generate_quiz(request: QuizRequest):
             answer="A",
             explanation=f"This is a placeholder question generated because the AI tutor service is currently offline. Please try again later. (Error: {str(e)})"
         )
-        data = QuizResponse(quiz=[fallback_item])
+        data = QuizResponse(quiz=[fallback_item], adapted_difficulty=adapted_difficulty)
         return UnifiedResponse(success=True, data=data)

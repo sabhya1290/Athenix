@@ -54,18 +54,21 @@ export interface QuizItem {
 
 export interface QuizResponse {
   quiz: QuizItem[];
+  adapted_difficulty: 'Easy' | 'Medium' | 'Hard';
 }
 
 export async function generateQuiz(
   topic: string,
   difficulty: 'Easy' | 'Medium' | 'Hard' = 'Easy',
-  questions: number = 5
+  questions: number = 5,
+  recent_scores?: number[]
 ): Promise<UnifiedResponse<QuizResponse>> {
   try {
     const response = await client.post<UnifiedResponse<QuizResponse>>('/generate-quiz', {
       topic,
       difficulty,
       questions,
+      recent_scores,
     });
     return response.data;
   } catch (error: any) {
@@ -202,6 +205,9 @@ export interface AnalyticsResponse {
   time_spent: Record<string, number>;
   predicted_rank: string;
   predicted_exam_readiness: number;
+  detected_learning_pace: 'Fast learner' | 'Normal learner' | 'Needs revision';
+  expected_score: number;
+  probability_of_clearing_exam: 'High' | 'Medium' | 'Low';
 }
 
 export async function analyzePerformance(

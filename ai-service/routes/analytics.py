@@ -53,6 +53,8 @@ class AnalyticsResponse(BaseModel):
     predicted_rank: str = Field(..., description="AI predicted rank range")
     predicted_exam_readiness: float = Field(..., description="AI predicted exam readiness percentage")
     detected_learning_pace: Literal["Fast learner", "Normal learner", "Needs revision"] = Field("Normal learner", description="Detected student learning pace category")
+    expected_score: int = Field(..., description="AI predicted score (scale of 0 to 300)")
+    probability_of_clearing_exam: Literal["High", "Medium", "Low"] = Field("Medium", description="Probability of clearing the exam")
 
 from utils.response import UnifiedResponse
 from utils.logger import get_logger
@@ -157,6 +159,15 @@ def analyze_student_performance(request: AnalyticsRequest):
         else:
             detected_pace = "Normal learner"
             
+        # Performance Prediction heuristic
+        expected_score_val = int(avg_score * 3)  # Scale to max of 300
+        if avg_score >= 75:
+            prob_clearing = "High"
+        elif avg_score >= 50:
+            prob_clearing = "Medium"
+        else:
+            prob_clearing = "Low"
+            
         fallback_data = AnalyticsResponse(
             weak_topics=list(set(weak_topics)),
             strong_topics=list(set(strong_topics)),
@@ -169,6 +180,8 @@ def analyze_student_performance(request: AnalyticsRequest):
             time_spent=time_spent,
             predicted_rank=predicted_rank,
             predicted_exam_readiness=round(avg_score, 1),
-            detected_learning_pace=detected_pace
+            detected_learning_pace=detected_pace,
+            expected_score=expected_score_val,
+            probability_of_clearing_exam=prob_clearing
         )
         return UnifiedResponse(success=True, data=fallback_data)
