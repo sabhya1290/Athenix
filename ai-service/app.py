@@ -1,4 +1,6 @@
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 import os
 
@@ -31,6 +33,7 @@ app.include_router(planner_router)
 app.include_router(evaluation_router)
 app.include_router(analytics_router)
 
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel
 from utils.response import UnifiedResponse
 
