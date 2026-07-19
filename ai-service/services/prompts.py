@@ -112,7 +112,12 @@ Return the response in valid JSON format matching this schema:
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
 
 def get_analytics_prompt(quizzes: list) -> str:
-    formatted_quizzes = "\n".join([f"- {q.get('title', 'Quiz')}: {q.get('topic')} - {q.get('score')}%" for q in quizzes])
+    formatted_quizzes = "\n".join([
+        f"- {q.get('title', 'Quiz')}: {q.get('topic')} | Score: {q.get('score')}% | "
+        f"Time: {q.get('completion_time_seconds')}s | Correct: {q.get('correct_answers')}/{q.get('total_questions')} | "
+        f"Difficulty: {q.get('difficulty')}"
+        for q in quizzes
+    ])
     return f"""You are a deep-learning diagnostic system. Perform a comprehensive analysis of the student's quiz history:
 {formatted_quizzes}
 
@@ -128,6 +133,7 @@ Formulate and calculate the following metrics:
 9. **Time spent**: Estimated study time spent in minutes per subject category (invent a realistic allocation based on scores).
 10. **Predicted rank**: An estimated competition rank range (e.g., "Top 1000", "Top 5%", "Rank 2000-2500") based on performance.
 11. **Predicted exam readiness**: Exam readiness percentage (0 to 100) based on topic mastery.
+12. **Detected learning pace**: Categorize the student as either "Fast learner" (high scores, low completion times on harder quizzes), "Normal learner" (average score and time), or "Needs revision" (low accuracy or extremely slow completion times).
 
 Return the response in valid JSON format matching this schema:
 {{
@@ -141,7 +147,8 @@ Return the response in valid JSON format matching this schema:
   "accuracy_by_subject": {{"Math": 85.0, "Physics": 50.0}},
   "time_spent": {{"Math": 240, "Physics": 480}},
   "predicted_rank": "Top 10%",
-  "predicted_exam_readiness": 78.0
+  "predicted_exam_readiness": 78.0,
+  "detected_learning_pace": "Fast learner"
 }}
 
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""

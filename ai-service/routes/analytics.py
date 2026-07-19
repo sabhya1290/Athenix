@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
-from typing import List
+from typing import List, Dict, Literal
 from services.gemini import generate_text
 from services.prompts import get_analytics_prompt
 import json
@@ -11,6 +11,10 @@ class QuizRecord(BaseModel):
     title: str = Field(..., example="Quiz 1", description="The title of the quiz")
     topic: str = Field(..., example="Arrays", description="The subject/topic of the quiz")
     score: int = Field(..., example=40, description="The score percentage the student obtained")
+    completion_time_seconds: int = Field(..., example=180, description="Time taken to complete the quiz in seconds")
+    correct_answers: int = Field(..., example=8, description="Number of correct answers")
+    total_questions: int = Field(..., example=10, description="Total number of questions in the quiz")
+    difficulty: Literal["Easy", "Medium", "Hard"] = Field("Medium", example="Medium", description="Difficulty level of the quiz")
 
     @field_validator("title", "topic")
     @classmethod
@@ -36,8 +40,6 @@ class AnalyticsRequest(BaseModel):
             raise ValueError("Quizzes list cannot be empty")
         return v
 
-from typing import Dict
-
 class AnalyticsResponse(BaseModel):
     weak_topics: List[str] = Field(..., description="Topics where the student performed poorly")
     strong_topics: List[str] = Field(..., description="Topics where the student performed well")
@@ -50,6 +52,7 @@ class AnalyticsResponse(BaseModel):
     time_spent: Dict[str, int] = Field(..., description="Estimated study time spent in minutes per category/subject")
     predicted_rank: str = Field(..., description="AI predicted rank range")
     predicted_exam_readiness: float = Field(..., description="AI predicted exam readiness percentage")
+    detected_learning_pace: Literal["Fast learner", "Normal learner", "Needs revision"] = Field("Normal learner", description="Detected student learning pace category")
 
 from utils.response import UnifiedResponse
 from utils.logger import get_logger
@@ -98,15 +101,16 @@ def analyze_student_performance(request: AnalyticsRequest):
         time_spent = {}
         
         for topic, scores in topic_scores.items():
-            avg_score = sum(scores) / len(scores)
-            topic_mastery[topic] = round(avg_score, 1)
-            accuracy_by_subject[topic] = round(avg_score, 1)
-            time_spent[topic] = len(scores) * 60  # Assume 60 minutes spent per quiz
+            avg_score_topic = sum(scores) / len(scores)
+            topic_mastery[topic] = round(avg_score_topic, 1)
+            accuracy_by_subject[topic] = round(avg_score_topic, 1)
+            # Use actual completion time for time spent calculations
+            time_spent[topic] = int(sum(q.completion_time_seconds for q in request.quizzes if q.topic == topic) // 60)
             
-            if avg_score < 60:
+            if avg_score_topic < 60:
                 weak_topics.append(topic)
-                weakness_graph[topic] = round((100 - avg_score) / 100.0, 2)
-            elif avg_score >= 75:
+                weakness_graph[topic] = round((100 - avg_score_topic) / 100.0, 2)
+            elif avg_score_topic >= 75:
                 strong_topics.append(topic)
                 
         if not weak_topics and not strong_topics:
@@ -141,6 +145,18 @@ def analyze_student_performance(request: AnalyticsRequest):
         elif avg_score >= 70:
             predicted_rank = "Top 15%"
             
+        # Dynamic Learning Pace Detection fallback heuristic
+        total_time = sum(q.completion_time_seconds for q in request.quizzes)
+        total_ques = sum(q.total_questions for q in request.quizzes)
+        avg_time_per_question = total_time / total_ques if total_ques > 0 else 30.0
+        
+        if avg_score >= 80 and avg_time_per_question < 25:
+            detected_pace = "Fast learner"
+        elif avg_score < 60 or avg_time_per_question > 50:
+            detected_pace = "Needs revision"
+        else:
+            detected_pace = "Normal learner"
+            
         fallback_data = AnalyticsResponse(
             weak_topics=list(set(weak_topics)),
             strong_topics=list(set(strong_topics)),
@@ -152,6 +168,7 @@ def analyze_student_performance(request: AnalyticsRequest):
             accuracy_by_subject=accuracy_by_subject,
             time_spent=time_spent,
             predicted_rank=predicted_rank,
-            predicted_exam_readiness=round(avg_score, 1)
+            predicted_exam_readiness=round(avg_score, 1),
+            detected_learning_pace=detected_pace
         )
         return UnifiedResponse(success=True, data=fallback_data)
