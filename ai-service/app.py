@@ -15,6 +15,8 @@ from routes.analytics import router as analytics_router
 from routes.rag import router as rag_router
 from routes.skill_gap import router as skill_gap_router
 from routes.mentor import router as mentor_router
+from routes.profile import router as profile_router
+from routes.predict import router as predict_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -38,6 +40,8 @@ app.include_router(analytics_router)
 app.include_router(rag_router)
 app.include_router(skill_gap_router)
 app.include_router(mentor_router)
+app.include_router(profile_router)
+app.include_router(predict_router)
 
 # pyrefly: ignore [missing-import]
 from pydantic import BaseModel

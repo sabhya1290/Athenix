@@ -204,27 +204,89 @@ Return the response in valid JSON format matching this schema:
 
 Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
 
-def get_mentor_chat_prompt(message: str, history: list, weak_topics: list, context: str) -> str:
+def get_mentor_chat_prompt(message: str, history: list, weak_topics: list, context: str, session_memory: list = None) -> str:
     formatted_history = ""
     for msg in history:
         role = "Student" if msg.get("role") == "user" else "Mentor AI"
         formatted_history += f"{role}: {msg.get('content')}\n"
-        
+
     weak_str = ", ".join(weak_topics) if weak_topics else "None specified"
-    
+
+    # Format persistent memory from previous mentor sessions
+    memory_str = ""
+    if session_memory:
+        memory_str = "\n".join(f"- {m}" for m in session_memory[-5:])  # Use last 5 sessions
+    else:
+        memory_str = "No previous mentor sessions recorded."
+
     return f"""You are Mentor AI, an encouraging, patient, and highly intelligent educational guide and tutor. Your goal is to help the student learn effectively, explaining concepts simply and checking in on their understanding.
 
-Here is the context available to you:
-- **Student's Known Weak Topics**: {weak_str} (If the student is asking about one of these topics, be extra patient, use visual analogies, break it down step-by-step, and encourage them).
+Here is the complete context available to you:
+- **Student's Known Weak Topics**: {weak_str} (Be extra patient and use step-by-step visual analogies for these topics).
+- **Student's Past Session Memory** (things discussed in previous sessions):
+{memory_str}
 - **Retrieved Study Notes / Material Context (RAG)**:
 {context or "No specific document context provided."}
 
-Here is the conversation history so far:
+If the student asks about something you helped them with before (based on Session Memory), acknowledge it naturally — e.g. "As we discussed last time...". This makes you feel like a real mentor who remembers their student.
+
+Here is the current conversation history:
 {formatted_history}
 
 Student's Latest Question:
 "{message}"
 
-Provide your tutoring response. Speak directly to the student in a conversational, supportive tone. Keep explanations clear, and if you refer to the notes, do so naturally. Do not output JSON, return a standard text response."""
+Provide your tutoring response. Speak directly to the student in a conversational, supportive tone. Keep explanations clear, and if you refer to the notes or past sessions, do so naturally. Do not output JSON, return a standard text response."""
 
+def get_performance_prediction_prompt(quizzes: list, exam: str, days_left: int, profile_context: dict = None) -> str:
+    formatted_quizzes = "\n".join([
+        f"- {q.get('title', 'Quiz')}: {q.get('topic')} | Score: {q.get('score')}% | "
+        f"Time: {q.get('completion_time_seconds')}s | Correct: {q.get('correct_answers')}/{q.get('total_questions')} | "
+        f"Difficulty: {q.get('difficulty')}"
+        for q in quizzes
+    ])
+
+    profile_str = ""
+    if profile_context:
+        profile_str = f"""
+- Learning Pace: {profile_context.get('learning_pace', 'Unknown')}
+- Study Consistency: {profile_context.get('consistency', 'Unknown')}
+- Daily Study Hours: {profile_context.get('study_hours', 2)}
+- Mentor Sessions Completed: {profile_context.get('mentor_sessions', 0)}"""
+
+    return f"""You are an advanced exam performance predictor AI. Based on the student's historical quiz data and learning profile, produce a detailed performance prediction report for the {exam} exam.
+
+Student Quiz History:
+{formatted_quizzes}
+
+Days Remaining Until Exam: {days_left} days
+Target Exam: {exam}{profile_str}
+
+Using this data, calculate and predict:
+1. **Current Readiness %**: A single percentage (0-100) reflecting how ready the student is for the exam RIGHT NOW.
+2. **Expected Score**: Predict the score the student would get if they appeared for the {exam} today (scale of 0 to 300).
+3. **Probability of Clearing**: Categorize as High (>75% readiness), Medium (50-75%), or Low (<50%).
+4. **Critical Weak Topic**: The single most important topic to focus on given the exam date and the student's weaknesses.
+5. **Readiness Breakdown**: Subject-level readiness percentages (0-100 for each topic in the quiz data).
+6. **Improvement Actions**: Top 3 very specific, actionable steps the student should take in the next 7 days.
+7. **Predicted Rank**: Estimated competitive rank range (e.g. "Top 1%", "Top 5000-7000", "Top 20%").
+8. **Confidence Message**: A short (1-2 sentence), honest, and encouraging message to the student.
+
+Return the response in valid JSON matching this schema:
+{{
+  "current_readiness_pct": 72.5,
+  "expected_score": 160,
+  "probability_of_clearing": "Medium",
+  "critical_weak_topic": "Integral Calculus",
+  "readiness_breakdown": {{"Calculus": 45.0, "Chemistry": 88.0, "Physics": 70.0}},
+  "improvement_actions": [
+    "Spend 2 hours daily on Integral Calculus exercises for the next 7 days.",
+    "Attempt 1 full-length mock test under timed conditions this weekend.",
+    "Review all Calculus mistakes from previous quizzes and make a formula sheet."
+  ],
+  "predicted_rank": "Top 15%",
+  "confidence_message": "You are on the right track! Focus intensively on Calculus this week and your score can jump by 20+ points."
+}}
+
+Do not wrap the response in markdown code blocks like ```json ... ```. Return raw JSON only."""
 

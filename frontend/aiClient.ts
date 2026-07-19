@@ -320,3 +320,124 @@ export async function checkAIHealth(): Promise<UnifiedResponse<HealthResponse>> 
     };
   }
 }
+
+// -------------------------------------------------------------
+// 7. LEARNING PROFILE → Persistent Student Profile
+// -------------------------------------------------------------
+export interface QuizIngestionRecord {
+  title: string;
+  topic: string;
+  score: number;                       // 0-100
+  completion_time_seconds?: number;
+  correct_answers?: number;
+  total_questions?: number;
+  difficulty?: 'Easy' | 'Medium' | 'Hard';
+  completed_at?: string;
+}
+
+export interface ProfileResponse {
+  student_id: string;
+  weak_topics: string[];
+  strong_topics: string[];
+  average_score: number;
+  study_hours: number;
+  learning_pace: string;
+  consistency: string;
+  preferred_difficulty: 'Easy' | 'Medium' | 'Hard';
+  last_activity: string | null;
+  quiz_history_count: number;
+  mentor_session_count: number;
+  has_performance_snapshot: boolean;
+}
+
+/** Fetch the current learning profile for a student */
+export async function getStudentProfile(
+  studentId: string
+): Promise<UnifiedResponse<ProfileResponse>> {
+  try {
+    const response = await client.get<UnifiedResponse<ProfileResponse>>(`/profile/${studentId}`);
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.detail || error.message || 'Failed to fetch profile',
+    };
+  }
+}
+
+/** Ingest one or more quiz records — profile aggregates automatically */
+export async function ingestQuizRecords(
+  studentId: string,
+  quizzes: QuizIngestionRecord[]
+): Promise<UnifiedResponse<ProfileResponse>> {
+  try {
+    const response = await client.post<UnifiedResponse<ProfileResponse>>(
+      `/profile/${studentId}/ingest`,
+      { quizzes }
+    );
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.detail || error.message || 'Failed to ingest quiz records',
+    };
+  }
+}
+
+/** Manually update editable fields like study_hours, preferred_difficulty */
+export async function updateStudentProfile(
+  studentId: string,
+  updates: { study_hours?: number; preferred_difficulty?: 'Easy' | 'Medium' | 'Hard' }
+): Promise<UnifiedResponse<ProfileResponse>> {
+  try {
+    const response = await client.patch<UnifiedResponse<ProfileResponse>>(
+      `/profile/${studentId}`,
+      updates
+    );
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.detail || error.message || 'Failed to update profile',
+    };
+  }
+}
+
+// -------------------------------------------------------------
+// 8. PERFORMANCE PREDICTION → Exam Readiness & Score Forecast
+// -------------------------------------------------------------
+export interface PredictRequest {
+  quizzes: QuizRecord[];
+  student_id?: string;
+  exam?: string;
+  days_left?: number;
+}
+
+export interface PredictResponse {
+  current_readiness_pct: number;      // 0-100
+  expected_score: number;             // 0-300
+  probability_of_clearing: 'High' | 'Medium' | 'Low';
+  critical_weak_topic: string;
+  readiness_breakdown: Record<string, number>;
+  improvement_actions: string[];
+  predicted_rank: string;
+  confidence_message: string;
+}
+
+export async function predictPerformance(
+  payload: PredictRequest
+): Promise<UnifiedResponse<PredictResponse>> {
+  try {
+    const response = await client.post<UnifiedResponse<PredictResponse>>('/predict', payload);
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.detail || error.message || 'Failed to predict performance',
+    };
+  }
+}

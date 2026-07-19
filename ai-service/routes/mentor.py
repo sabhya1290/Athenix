@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Literal
 from services.gemini import generate_text
 from services.prompts import get_mentor_chat_prompt
 from services.rag import retrieve_relevant_chunks
+from services.profile_store import get_profile, add_mentor_session
 from utils.response import UnifiedResponse
 from utils.logger import get_logger
 
@@ -19,6 +20,7 @@ class MentorChatRequest(BaseModel):
     chat_history: List[ChatMessage] = Field(default=[], description="Previous conversation logs")
     weak_topics: List[str] = Field(default=[], example=["Calculus"], description="The student's weak subjects/topics")
     doc_id: Optional[str] = Field(None, example="3e0d238f-baaf-4cc9-94bb-89c6c79851fe", description="Optional FAISS document ID to query context from")
+    student_id: Optional[str] = Field(None, example="student_001", description="Optional student ID to load persistent session memory")
 
 class MentorChatResponse(BaseModel):
     response: str = Field(..., description="Mentor AI's conversational response")
@@ -30,7 +32,7 @@ def mentor_chat(request: MentorChatRequest):
     try:
         retrieved_context = []
         context_str = ""
-        
+
         # 1. Retrieve document context from FAISS if doc_id is provided
         if request.doc_id:
             try:
@@ -38,14 +40,30 @@ def mentor_chat(request: MentorChatRequest):
                 context_str = "\n\n---\n\n".join(retrieved_context)
             except Exception as re:
                 logger.warning(f"RAG context retrieval failed for doc {request.doc_id}: {str(re)}")
-                
-        # 2. Build prompt containing message, history, weak topics, and RAG context
+
+        # 2. Load persistent session memory from student profile
+        session_memory = []
+        if request.student_id:
+            profile = get_profile(request.student_id)
+            session_memory = profile.get("mentor_session_memory", [])
+            # Also merge profile's weak_topics if not provided in request
+            if not request.weak_topics and profile.get("weak_topics"):
+                request.weak_topics = profile["weak_topics"]
+
+        # 3. Build prompt with message, history, weak topics, RAG context, and session memory
         history_list = [h.model_dump() for h in request.chat_history]
-        prompt = get_mentor_chat_prompt(request.message, history_list, request.weak_topics, context_str)
-        
-        # 3. Generate tutoring response
+        prompt = get_mentor_chat_prompt(
+            request.message, history_list, request.weak_topics, context_str, session_memory
+        )
+
+        # 4. Generate tutoring response
         response_text = generate_text(prompt, json_mode=False)
-        
+
+        # 5. Store a summary of this session into persistent memory
+        if request.student_id:
+            summary = f"Topic: '{request.message[:80]}' — Mentor responded about {', '.join(request.weak_topics) or 'general topics'}."
+            add_mentor_session(request.student_id, summary)
+
         data = MentorChatResponse(
             response=response_text.strip(),
             retrieved_context=retrieved_context
